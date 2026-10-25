@@ -43,13 +43,13 @@ def test_positions_ok(client):
     res = r.json()["results"]
     assert len(res) == 2
     assert set(res[0]) == {"Sun", "Moon"}
-    assert set(res[0]["Sun"]) == {"longitude", "speed"}
+    assert set(res[0]["Sun"]) == {"longitude", "speed", "latitude"}
     assert 0 <= res[0]["Sun"]["longitude"] < 360
 
 
 def test_unknown_planet_422(client):
     r = client.post("/v1/positions", headers=H, json={
-        "jds": [JD], "planets": ["Pluto"], "ayanamsha": "lahiri"})
+        "jds": [JD], "planets": ["Chiron"], "ayanamsha": "lahiri"})
     assert r.status_code == 422
 
 
@@ -70,7 +70,7 @@ def test_version_has_source_url(client):
     assert r.status_code == 200
     body = r.json()
     assert body["source_url"] == "https://example.org/src"
-    assert body["service_version"] == "0.1.0"
+    assert body["service_version"] == "0.2.0"
     assert body["swe_version"] and body["ephemeris_mode"] in ("moshier", "swieph")
 
 
@@ -175,3 +175,28 @@ def test_production_disables_docs(monkeypatch, env):
     with TestClient(create_app()) as c:
         assert c.get("/docs").status_code == 404
         assert c.get("/openapi.json").status_code == 404
+
+
+def test_unknown_frame_422(client):
+    r = client.post("/v1/positions", headers=H, json={
+        "jds": [JD], "planets": ["Sun"], "ayanamsha": "lahiri", "frame": "galactic"})
+    assert r.status_code == 422
+
+
+def test_existing_response_fields_unchanged(client):
+    r = client.post("/v1/positions", headers=H, json={
+        "jds": [2451545.0], "planets": ["Sun"], "ayanamsha": "lahiri"})
+    sun = r.json()["results"][0]["Sun"]
+    assert set(sun) == {"longitude", "speed", "latitude"}  # old keys + additive latitude
+    assert abs(sun["longitude"] - 256.51569718931427) < 1e-6
+    assert abs(sun["speed"] - 1.0193918758618497) < 1e-6
+
+
+def test_frame_and_new_names_over_http(client):
+    r = client.post("/v1/positions", headers=H, json={
+        "jds": [2451545.0], "planets": ["Pluto", "Sun"], "ayanamsha": "fagan", "frame": "tropical"})
+    assert r.status_code == 200
+    assert abs(r.json()["results"][0]["Sun"]["longitude"] - 280.36891967534336) < 1e-9
+    for name in ("pushya", "raman", "fagan", "tropical"):
+        assert client.post("/v1/ayanamsha", headers=H,
+                           json={"jd": JD, "ayanamsha": name}).status_code == 200

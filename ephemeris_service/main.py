@@ -17,18 +17,20 @@ from ephemeris_service import swiss
 try:
     SERVICE_VERSION = _pkg_version("ephemeris-service")
 except PackageNotFoundError:  # pragma: no cover
-    SERVICE_VERSION = "0.1.0"
+    SERVICE_VERSION = "0.2.0"
 
 DEFAULT_SOURCE_URL = "https://example.invalid/set-SOURCE_URL"
 MAX_JDS = 2000
 
-Ayanamsha = Literal["krishnamurti", "lahiri"]
+Ayanamsha = Literal["krishnamurti", "lahiri", "pushya", "raman", "fagan", "tropical"]
+Frame = Literal["sidereal", "tropical", "equatorial"]
 
 
 class PositionsIn(BaseModel):
     jds: list[float] = Field(max_length=MAX_JDS)
     planets: list[str]
     ayanamsha: Ayanamsha
+    frame: Frame = "sidereal"
 
     @field_validator("planets")
     @classmethod
@@ -134,9 +136,10 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/positions", dependencies=auth)
     def positions(body: PositionsIn) -> dict:
-        rows = swiss.positions(body.jds, body.planets, body.ayanamsha)
+        rows = swiss.positions_ex(body.jds, body.planets, body.ayanamsha, body.frame)
         return {"results": [
-            {name: {"longitude": lon, "speed": spd} for name, (lon, spd) in row.items()}
+            {name: {"longitude": p.longitude, "speed": p.speed, "latitude": p.latitude}
+             for name, p in row.items()}
             for row in rows]}
 
     @app.post("/v1/ayanamsha", dependencies=auth)

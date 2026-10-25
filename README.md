@@ -1,7 +1,8 @@
 # ephemeris-service
 
 A small stateless service exposing raw Swiss Ephemeris calculations: sidereal planetary
-longitudes and speeds, ayanamsha values, Placidus house cusps, sunrise/sunset and
+longitudes, latitudes and speeds (sidereal, tropical or equatorial frame; Sun to Pluto and
+the lunar nodes), ayanamsha values (krishnamurti, lahiri, pushya, raman, fagan, tropical), Placidus house cusps, sunrise/sunset and
 eclipse search. It contains no astrological interpretation.
 
 ## Run
@@ -26,6 +27,10 @@ production the placeholder default is used.
 All `/v1/*` endpoints and `/version` require header `X-Internal-Key` equal to
 `EPHEMERIS_API_KEY`; `/health` is open. Swiss Ephemeris errors are returned as HTTP 422
 with `{"detail": "<swisseph message>"}`.
+
+`POST /v1/positions` takes an optional `frame` (`sidereal` default, `tropical`, `equatorial`); each
+planet returns `longitude`, `speed` and `latitude`. In the equatorial frame `longitude` is right
+ascension and `latitude` is declination. `ayanamsha` is ignored outside the sidereal frame.
 
 | Env | Meaning |
 | --- | --- |
