@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ephemeris-service"
+version = "0.1.0"
+description = "Thin HTTP wrapper over the Swiss Ephemeris: positions, houses, rise/set, eclipses."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "AGPL-3.0-or-later" }
+dependencies = [
+    "pyswisseph==2.10.3.2",
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx"]
+
+[tool.setuptools]
+packages = ["ephemeris_service"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
