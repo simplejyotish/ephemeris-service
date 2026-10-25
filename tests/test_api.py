@@ -217,3 +217,18 @@ def test_unknown_system_422(client):
     r = client.post("/v1/houses", headers=H, json={
         "jd": JD, "lat": 28.6, "lon": 77.2, "ayanamsha": "lahiri", "system": "whole_sign"})
     assert r.status_code == 422
+
+
+@pytest.mark.parametrize("system", ["koch", "equal"])
+def test_houses_polar_latitude_422(client, system):
+    r = client.post("/v1/houses", headers=H, json={
+        "jd": 2447753.5, "lat": 80, "lon": 77.2, "ayanamsha": "lahiri", "system": system})
+    assert r.status_code == 422
+    assert isinstance(r.json()["detail"], str) and "swisseph.houses_ex" in r.json()["detail"]
+
+
+def test_houses_omitted_system_equals_placidus(client):
+    base = {"jd": 2447753.5, "lat": 28.6139, "lon": 77.2090, "ayanamsha": "lahiri"}
+    a = client.post("/v1/houses", headers=H, json=base)
+    b = client.post("/v1/houses", headers=H, json={**base, "system": "placidus"})
+    assert a.status_code == b.status_code == 200 and a.json() == b.json()

@@ -277,3 +277,27 @@ def test_default_system_unchanged():
 def test_houses_unknown_system_raises():
     with pytest.raises(ValueError):
         swiss.houses(JD_HS, DELHI[0], DELHI[1], "lahiri", "bogus")
+
+
+_HS66 = {
+    "asc": 129.28678141763857, "mc": 19.32728770864142,
+    "placidus": [129.28678141763857, 143.4893129496913, 164.98887463648867, 199.32728770864142, 251.62426906207182, 285.54269543175803, 309.2867814176385, 323.4893129496913, 344.9888746364886, 19.32728770864142, 71.62426906207179, 105.54269543175803],
+    "koch": [129.28678141763857, 152.80571443472434, 176.4869887810646, 199.32728770864142, 265.06218822011135, 286.78477432689994, 309.2867814176385, 332.80571443472434, 356.4869887810646, 19.32728770864142, 85.06218822011138, 106.78477432689996],
+    "sripati": [110.96019913280571, 140.9601991328057, 164.30703456313998, 187.65386999347427, 217.65386999347427, 254.30703456313998, 290.96019913280566, 320.96019913280566, 344.30703456313995, 7.653869993474281, 37.65386999347428, 74.30703456314001],
+    "equal": [129.28678141763857, 159.28678141763857, 189.28678141763857, 219.28678141763854, 249.28678141763854, 279.2867814176385, 309.2867814176385, 339.2867814176385, 9.28678141763853, 39.28678141763853, 69.28678141763854, 99.28678141763854],
+}
+
+
+@pytest.mark.parametrize("system", ["placidus", "koch", "sripati", "equal"])
+def test_houses_high_latitude_66_matches_legacy(system):
+    # 66 deg N is the highest whole degree where all four systems still work at this JD.
+    cusps, asc, mc = swiss.houses(JD_HS, 66.0, DELHI[1], "lahiri", system)
+    for a, b in zip(cusps, _HS66[system]):
+        assert abs(a - b) < 1e-9
+    assert abs(asc - _HS66["asc"]) < 1e-9 and abs(mc - _HS66["mc"]) < 1e-9
+
+
+@pytest.mark.parametrize("system", ["placidus", "koch", "sripati", "equal"])
+def test_houses_polar_latitude_raises(system):
+    with pytest.raises(swe.Error):
+        swiss.houses(JD_HS, 80.0, DELHI[1], "lahiri", system)
