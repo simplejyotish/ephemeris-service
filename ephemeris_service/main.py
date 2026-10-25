@@ -59,6 +59,8 @@ class RiseSetIn(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
     event: Literal["sunrise", "sunset"]
+    body: Literal["Sun", "Moon"] = "Sun"
+    hindu_rising: bool = False
 
 
 class EclipseIn(BaseModel):
@@ -154,7 +156,8 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/rise-set", dependencies=auth)
     def rise_set(body: RiseSetIn) -> dict:
-        return {"jd": swiss.rise_set(body.jd_start, body.lat, body.lon, body.event)}
+        return {"jd": swiss.rise_set(
+            body.jd_start, body.lat, body.lon, body.event, body.body, body.hindu_rising)}
 
     @app.post("/v1/eclipses", dependencies=auth)
     def eclipses(body: EclipseIn) -> dict:

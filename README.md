@@ -32,6 +32,11 @@ with `{"detail": "<swisseph message>"}`.
 planet returns `longitude`, `speed` and `latitude`. In the equatorial frame `longitude` is right
 ascension and `latitude` is declination. `ayanamsha` is ignored outside the sidereal frame.
 
+`POST /v1/rise-set` takes `jd_start`, `lat`, `lon` and `event` (`sunrise` or `sunset`), plus optional
+`body` (`Sun` default, or `Moon`) and `hindu_rising` (default `false`). With `hindu_rising=true` the
+centre of the disc is on the horizon with no refraction (`BIT_HINDU_RISING`), so sunrise is later and
+sunset earlier than the standard upper-limb event. Defaults return exactly what they did before.
+
 Note: `ayanamsha="tropical"` (sidereal frame) reproduces the legacy app's user-defined zero
 ayanamsha exactly, quirks included: its `speed` carries a 360000 deg/day offset (about 360001
 for the Sun) and its longitude is about 0.0039 deg off true tropical at J2000. For genuine

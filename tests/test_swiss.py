@@ -54,6 +54,44 @@ def test_rise_set_delhi():
     assert jd0 + 0.4 < sset < jd0 + 0.7
 
 
+# Reference values from pyswisseph 2.10.3.2 (FLG_MOSEPH, Delhi 28.6139 N 77.2090 E, start 2026-03-15 00:00 UT).
+_RS_JD = 2461114.5
+_RS_LAT, _RS_LON = 28.6139, 77.2090
+
+
+def test_hindu_rising_differs_from_standard_and_matches_legacy():
+    # Centre of the disc on the horizon, no refraction: sunrise comes later and
+    # sunset earlier than the standard upper-limb event.
+    std_rise = swiss.rise_set(_RS_JD, _RS_LAT, _RS_LON, "sunrise")
+    std_set = swiss.rise_set(std_rise, _RS_LAT, _RS_LON, "sunset")
+    h_rise = swiss.rise_set(_RS_JD, _RS_LAT, _RS_LON, "sunrise", hindu_rising=True)
+    h_set = swiss.rise_set(h_rise, _RS_LAT, _RS_LON, "sunset", hindu_rising=True)
+    assert abs(std_rise - 2461114.542344129) < 1e-9
+    assert abs(std_set - 2461115.041423062) < 1e-9
+    assert abs(h_rise - 2461114.5451218807) < 1e-9
+    assert abs(h_set - 2461115.038642297) < 1e-9
+    assert h_rise > std_rise and h_set < std_set
+
+
+def test_moon_rise_matches_legacy():
+    rise = swiss.rise_set(_RS_JD, _RS_LAT, _RS_LON, "sunrise", body="Moon")
+    sset = swiss.rise_set(rise, _RS_LAT, _RS_LON, "sunset", body="Moon")
+    assert abs(rise - 2461115.4703247305) < 1e-9
+    assert abs(sset - 2461115.9330668095) < 1e-9
+    h = swiss.rise_set(_RS_JD, _RS_LAT, _RS_LON, "sunrise", body="Moon", hindu_rising=True)
+    assert abs(h - 2461115.465042886) < 1e-9
+
+
+def test_default_unchanged():
+    assert swiss.rise_set(_RS_JD, _RS_LAT, _RS_LON, "sunrise") == swiss.rise_set(
+        _RS_JD, _RS_LAT, _RS_LON, "sunrise", body="Sun", hindu_rising=False)
+
+
+def test_unknown_body_rejected():
+    with pytest.raises(ValueError):
+        swiss.rise_set(_RS_JD, _RS_LAT, _RS_LON, "sunrise", body="Mars")
+
+
 def test_next_eclipse_known():
     # The first solar eclipse after 2026-01-01 is the 2026-02-17 annular one;
     # start after it to reach the 2026-08-12 total eclipse.

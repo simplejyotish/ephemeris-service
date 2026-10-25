@@ -95,6 +95,16 @@ def test_rise_set_and_eclipse_ok(client):
                        json={"jd_start": JD, "kind": "x"}).status_code == 422
 
 
+def test_rise_set_body_and_hindu_rising(client):
+    base = {"jd_start": 2461114.5, "lat": 28.6139, "lon": 77.2090}
+    r = client.post("/v1/rise-set", headers=H, json={**base, "event": "sunrise", "hindu_rising": True})
+    assert abs(r.json()["jd"] - 2461114.5451218807) < 1e-9
+    r = client.post("/v1/rise-set", headers=H, json={**base, "event": "sunrise", "body": "Moon"})
+    assert abs(r.json()["jd"] - 2461115.4703247305) < 1e-9
+    r = client.post("/v1/rise-set", headers=H, json={**base, "event": "sunrise", "body": "Mars"})
+    assert r.status_code == 422
+
+
 def test_swe_error_is_422_with_message(client):
     r = client.post("/v1/rise-set", headers=H, json={
         "jd_start": 1.5, "lat": 28.6, "lon": 77.2, "event": "sunrise"})

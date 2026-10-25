@@ -144,15 +144,30 @@ def houses(jd: float, lat: float, lon: float, ayanamsha: str,
 
 
 def rise_set(jd_start: float, lat: float, lon: float,
-             event: Literal["sunrise", "sunset"]) -> float:
+             event: Literal["sunrise", "sunset"],
+             body: Literal["Sun", "Moon"] = "Sun",
+             hindu_rising: bool = False) -> float:
+    """Next rise or set of the Sun or Moon after jd_start (UT).
+
+    hindu_rising puts the centre of the disc on the horizon with no refraction
+    (swe.BIT_HINDU_RISING); the default is the standard upper-limb event.
+    """
+    if body == "Sun":
+        planet = swe.SUN
+    elif body == "Moon":
+        planet = swe.MOON
+    else:
+        raise ValueError(f"unknown body: {body!r}")
     if event == "sunrise":
         rsmi = swe.CALC_RISE
     elif event == "sunset":
         rsmi = swe.CALC_SET
     else:
         raise ValueError(f"unknown event: {event!r}")
+    if hindu_rising:
+        rsmi |= swe.BIT_HINDU_RISING
     # swe.Error from swisseph propagates unchanged.
-    _, tret = swe.rise_trans(jd_start, swe.SUN, rsmi, (lon, lat, 0.0), 0.0, 0.0,
+    _, tret = swe.rise_trans(jd_start, planet, rsmi, (lon, lat, 0.0), 0.0, 0.0,
                              swe.FLG_MOSEPH)
     return tret[0]
 
