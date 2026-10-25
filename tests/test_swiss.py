@@ -97,7 +97,7 @@ def test_unknown_planet_and_ayanamsha_raise_valueerror():
     with pytest.raises(ValueError):
         swiss.ayanamsha_value(JD_2000, "bogus")
     with pytest.raises(ValueError):
-        swiss.houses(JD_2000, 0.0, 0.0, "fagan")
+        swiss.houses(JD_2000, 0.0, 0.0, "bogus")
 
 
 # --- 0.2 additions. Reference numbers captured with the legacy swisseph call
