@@ -63,13 +63,29 @@ class EclipseIn(BaseModel):
     kind: Literal["solar", "lunar"]
 
 
+_DEV_ENVS = ("dev", "development", "test")
+_PROD_ENVS = ("production", "prod")
+
+
+def _env() -> str:
+    """ENV, stripped and lower-cased (the only way ENV is read)."""
+    return os.environ.get("ENV", "").strip().lower()
+
+
 def create_app() -> FastAPI:
-    env = os.environ.get("ENV", "").lower()
-    prod = env in ("production", "prod")
-    api_key = os.environ.get("EPHEMERIS_API_KEY") or None
-    if prod and not api_key:
-        raise RuntimeError("EPHEMERIS_API_KEY must be set when ENV=production")
-    source_url = os.environ.get("SOURCE_URL") or DEFAULT_SOURCE_URL
+    env = _env()
+    dev = env in _DEV_ENVS
+    prod = env in _PROD_ENVS
+    api_key = os.environ.get("EPHEMERIS_API_KEY", "").strip() or None
+    # Fail closed: auth is skipped only when ENV explicitly names a dev/test setup.
+    if not dev and not api_key:
+        raise RuntimeError(
+            "EPHEMERIS_API_KEY must be set unless ENV is one of: " + ", ".join(_DEV_ENVS))
+    source_url = os.environ.get("SOURCE_URL", "").strip() or DEFAULT_SOURCE_URL
+    if prod and "example.invalid" in source_url:
+        raise RuntimeError(
+            "SOURCE_URL must be set to the public source URL (AGPL section 13) "
+            "when ENV=production")
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -87,7 +103,7 @@ def create_app() -> FastAPI:
     )
 
     def require_key(x_internal_key: str | None = Header(default=None)) -> None:
-        if api_key is None:  # only reachable outside production
+        if api_key is None:  # only reachable when ENV is dev/development/test
             return
         if x_internal_key is None or not secrets.compare_digest(
                 x_internal_key.encode(), api_key.encode()):
@@ -144,4 +160,16 @@ def create_app() -> FastAPI:
     return app
 
 
-app = create_app()
+_app: FastAPI | None = None
+
+
+def __getattr__(name: str):
+    # ``ephemeris_service.main:app`` (uvicorn) is built lazily on first access, so
+    # importing this module never depends on the environment; startup still fails
+    # before serving if the configuration is invalid.
+    global _app
+    if name == "app":
+        if _app is None:
+            _app = create_app()
+        return _app
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

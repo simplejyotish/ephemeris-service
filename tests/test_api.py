@@ -1,7 +1,11 @@
+import os
+import subprocess
+import sys
+
 import pytest
 from fastapi.testclient import TestClient
 
-from ephemeris_service.main import create_app
+from ephemeris_service.main import DEFAULT_SOURCE_URL, create_app
 
 KEY = "secret-key"
 H = {"X-Internal-Key": KEY}
@@ -98,12 +102,62 @@ def test_swe_error_is_422_with_message(client):
     assert r.json()["detail"].startswith("swisseph.")
 
 
-def test_no_key_configured_skips_auth_in_dev(monkeypatch):
+@pytest.mark.parametrize("env", ["dev", "development", "test", " DEV "])
+def test_no_key_configured_skips_auth_in_dev(monkeypatch, env):
     monkeypatch.delenv("EPHEMERIS_API_KEY", raising=False)
-    monkeypatch.delenv("ENV", raising=False)
+    monkeypatch.setenv("ENV", env)
     with TestClient(create_app()) as c:
         r = c.post("/v1/ayanamsha", json={"jd": JD, "ayanamsha": "lahiri"})
         assert r.status_code == 200
+
+
+def test_unset_env_without_key_refuses_to_start(monkeypatch):
+    monkeypatch.delenv("ENV", raising=False)
+    monkeypatch.delenv("EPHEMERIS_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="EPHEMERIS_API_KEY"):
+        create_app()
+
+
+@pytest.mark.parametrize("env", ["staging", " production ", "", "prod"])
+def test_non_dev_env_without_key_refuses_to_start(monkeypatch, env):
+    monkeypatch.setenv("ENV", env)
+    monkeypatch.setenv("SOURCE_URL", "https://example.org/src")
+    monkeypatch.delenv("EPHEMERIS_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="EPHEMERIS_API_KEY"):
+        create_app()
+
+
+@pytest.mark.parametrize("source_url", [None, "", "https://example.invalid/set-SOURCE_URL",
+                                        "https://example.invalid/src"])
+def test_production_requires_real_source_url(monkeypatch, source_url):
+    monkeypatch.setenv("ENV", " Production ")
+    monkeypatch.setenv("EPHEMERIS_API_KEY", KEY)
+    if source_url is None:
+        monkeypatch.delenv("SOURCE_URL", raising=False)
+    else:
+        monkeypatch.setenv("SOURCE_URL", source_url)
+    with pytest.raises(RuntimeError, match="SOURCE_URL"):
+        create_app()
+
+
+def test_dev_keeps_placeholder_source_url(monkeypatch):
+    monkeypatch.setenv("ENV", "dev")
+    monkeypatch.setenv("EPHEMERIS_API_KEY", KEY)
+    monkeypatch.delenv("SOURCE_URL", raising=False)
+    with TestClient(create_app()) as c:
+        assert c.get("/version", headers=H).json()["source_url"] == DEFAULT_SOURCE_URL
+
+
+def test_module_import_does_not_build_app():
+    # The ASGI app is built lazily on first access of ``main.app`` so that importing
+    # the module (e.g. in tests) does not depend on the process environment.
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("ENV", "EPHEMERIS_API_KEY", "SOURCE_URL")}
+    code = ("import ephemeris_service.main as m\n"
+            "try:\n    m.app\nexcept RuntimeError as e:\n    print('refused:', e)\n")
+    out = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True,
+                         text=True, check=True).stdout
+    assert out.startswith("refused:") and "EPHEMERIS_API_KEY" in out
 
 
 def test_production_without_key_refuses_to_start(monkeypatch):
@@ -113,9 +167,11 @@ def test_production_without_key_refuses_to_start(monkeypatch):
         create_app()
 
 
-def test_production_disables_docs(monkeypatch):
-    monkeypatch.setenv("ENV", "production")
+@pytest.mark.parametrize("env", ["production", " production ", "PROD"])
+def test_production_disables_docs(monkeypatch, env):
+    monkeypatch.setenv("ENV", env)
     monkeypatch.setenv("EPHEMERIS_API_KEY", KEY)
+    monkeypatch.setenv("SOURCE_URL", "https://github.com/example/ephemeris-service")
     with TestClient(create_app()) as c:
         assert c.get("/docs").status_code == 404
         assert c.get("/openapi.json").status_code == 404

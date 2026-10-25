@@ -15,7 +15,11 @@ eclipse search. It contains no astrological interpretation.
 This program is licensed under the GNU Affero General Public License v3.0 (see
 `LICENSE`). Swiss Ephemeris is used under AGPL-3.0. Per AGPL section 13, users
 interacting with this service over a network may obtain the complete corresponding
-source at: SOURCE_URL (to be set by the project owner).
+source at the URL configured as `SOURCE_URL` and reported by `GET /version`. The
+service refuses to start with `ENV=production` unless `SOURCE_URL` is set to a real
+public URL (the built-in `https://example.invalid/...` placeholder is rejected), so a
+production deployment always advertises where its source can be obtained. Outside
+production the placeholder default is used.
 
 ## HTTP API and configuration
 
@@ -25,8 +29,8 @@ with `{"detail": "<swisseph message>"}`.
 
 | Env | Meaning |
 | --- | --- |
-| `EPHEMERIS_API_KEY` | Shared secret. Required when `ENV=production` (startup fails otherwise); if unset in dev, auth is skipped. |
-| `SOURCE_URL` | Public URL of the source (AGPL section 13), reported by `/version`. The owner must set this; the default is a placeholder. |
+| `EPHEMERIS_API_KEY` | Shared secret. Required (startup fails otherwise) unless `ENV` is explicitly `dev`, `development` or `test`; only then may it be unset, which skips auth. |
+| `SOURCE_URL` | Public URL of the source (AGPL section 13), reported by `/version`. Required with `ENV=production` (unset or the `example.invalid` placeholder fails startup); elsewhere defaults to a placeholder. |
 | `SE_EPHE_PATH` | Optional directory of Swiss Ephemeris data files; otherwise Moshier is used. |
-| `ENV` | `production` disables `/docs`, `/redoc`, `/openapi.json`. |
+| `ENV` | Read stripped and case-insensitively. `production`/`prod` disables `/docs`, `/redoc`, `/openapi.json` and requires `SOURCE_URL`; `dev`/`development`/`test` allow running without a key. The Docker image defaults to `production`. |
 | `PORT` | Listen port (default 8001; Railway sets it). |
