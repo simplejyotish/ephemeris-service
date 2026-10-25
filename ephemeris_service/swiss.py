@@ -120,12 +120,26 @@ def ayanamsha_value(jd: float, ayanamsha: str) -> float:
         return swe.get_ayanamsa_ut(jd)
 
 
-def houses(jd: float, lat: float, lon: float,
-           ayanamsha: str) -> tuple[list[float], float, float]:
+HouseSystem = Literal["placidus", "koch", "sripati", "equal"]
+_HOUSE_CODES = {"placidus": b"P", "koch": b"K", "sripati": b"S", "equal": b"E"}
+
+
+def houses(jd: float, lat: float, lon: float, ayanamsha: str,
+           system: HouseSystem = "placidus") -> tuple[list[float], float, float]:
+    """(12 cusps in the requested system, ascendant, midheaven).
+
+    Ascendant and midheaven always come from the Placidus call, as in the legacy app.
+    """
     _check_ayanamsha(ayanamsha)
+    try:
+        code = _HOUSE_CODES[system]
+    except KeyError:
+        raise ValueError(f"unknown house system: {system!r}") from None
     with _LOCK:
         _apply_sid_mode(ayanamsha, jd)
         cusps, ascmc = swe.houses_ex(jd, lat, lon, b"P", swe.FLG_SIDEREAL)
+        if code != b"P":
+            cusps, _ = swe.houses_ex(jd, lat, lon, code, swe.FLG_SIDEREAL)
     return list(cusps), ascmc[0], ascmc[1]
 
 

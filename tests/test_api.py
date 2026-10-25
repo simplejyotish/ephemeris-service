@@ -200,3 +200,20 @@ def test_frame_and_new_names_over_http(client):
     for name in ("pushya", "raman", "fagan", "tropical"):
         assert client.post("/v1/ayanamsha", headers=H,
                            json={"jd": JD, "ayanamsha": name}).status_code == 200
+
+
+def test_houses_system_field(client):
+    base = {"jd": 2447753.5, "lat": 28.6139, "lon": 77.2090, "ayanamsha": "tropical"}
+    default = client.post("/v1/houses", headers=H, json=base).json()
+    equal = client.post("/v1/houses", headers=H, json={**base, "system": "equal"})
+    assert equal.status_code == 200
+    body = equal.json()
+    assert abs(body["cusps"][1] - 166.98422935680756) < 1e-9
+    assert body["ascendant"] == default["ascendant"]
+    assert abs(default["cusps"][1] - 161.78541038039478) < 1e-9
+
+
+def test_unknown_system_422(client):
+    r = client.post("/v1/houses", headers=H, json={
+        "jd": JD, "lat": 28.6, "lon": 77.2, "ayanamsha": "lahiri", "system": "whole_sign"})
+    assert r.status_code == 422

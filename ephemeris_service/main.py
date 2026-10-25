@@ -51,6 +51,7 @@ class HousesIn(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
     ayanamsha: Ayanamsha
+    system: Literal["placidus", "koch", "sripati", "equal"] = "placidus"
 
 
 class RiseSetIn(BaseModel):
@@ -148,7 +149,7 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/houses", dependencies=auth)
     def houses(body: HousesIn) -> dict:
-        cusps, asc, mc = swiss.houses(body.jd, body.lat, body.lon, body.ayanamsha)
+        cusps, asc, mc = swiss.houses(body.jd, body.lat, body.lon, body.ayanamsha, body.system)
         return {"cusps": cusps, "ascendant": asc, "midheaven": mc}
 
     @app.post("/v1/rise-set", dependencies=auth)
