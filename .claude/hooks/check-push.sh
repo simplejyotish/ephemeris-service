@@ -5,7 +5,7 @@
 # another shell or tool. GitHub branch protection is the real backstop.
 set -u
 
-EXPECTED="simple-astro/ephemeris-service"
+EXPECTED="simplejyotish/ephemeris-service"
 
 cmd=$(jq -r '.tool_input.command // ""' 2>/dev/null) || exit 0
 

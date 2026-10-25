@@ -5,7 +5,7 @@ Read this first. This repo is **public**. Everything committed here is visible t
 ## What this repo is
 A small, stateless HTTP service on Swiss Ephemeris (`pyswisseph`). It returns raw astronomy only:
 planet longitudes and speeds, house cusps, ayanamsha, sunrise/sunset, and eclipse times. It is the only
-place in the whole project that imports `swisseph`. The private backend (`simple-astro/chart-engine`)
+place in the whole project that imports `swisseph`. The private backend (`simplejyotish/chart-engine`)
 calls it over HTTP and does all the astrology.
 
 ```
@@ -16,7 +16,7 @@ android / ios  -->  chart-engine (private backend)  --HTTP + X-Internal-Key-->  
 | Code | Goes in | Never in |
 |---|---|---|
 | Swiss Ephemeris calls, raw positions/houses/rise-set/eclipses, auth, health/version | this repo | the backend |
-| Astrology interpretation (signs, nakshatras, dasha, KP, vargas, panchang assembly, Lal Kitab, matchmaking) | `simple-astro/chart-engine` (private) | **this repo** |
+| Astrology interpretation (signs, nakshatras, dasha, KP, vargas, panchang assembly, Lal Kitab, matchmaking) | `simplejyotish/chart-engine` (private) | **this repo** |
 
 ## Hard rules
 1. **No astrology logic here.** No sign names, nakshatras, dashas, houses-as-meaning, yogas, remedies.
@@ -24,7 +24,7 @@ android / ios  -->  chart-engine (private backend)  --HTTP + X-Internal-Key-->  
    it belongs in the backend.
 2. **Never copy code from the private backend into this repo.** This repo is public and AGPL; anything
    copied in becomes public. Do not paste backend files, tests, golden data or docs here.
-3. **Push only to `https://github.com/simple-astro/ephemeris-service`.** Never push this code anywhere
+3. **Push only to `https://github.com/simplejyotish/ephemeris-service`.** Never push this code anywhere
    else, and never push backend code here. No force pushes, `--mirror`, `--all` or branch deletes. A hook
    in `.claude/` blocks these; do not work around it.
 4. **No secrets in git, ever.** The shared key comes from `EPHEMERIS_API_KEY`; the AGPL source link from
