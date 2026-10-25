@@ -155,6 +155,8 @@ def test_tropical_ayanamsha_is_zero_at_jd_and_matches_legacy():
     assert abs(swiss.ayanamsha_value(JD_2023, "tropical") - 3.062086761929095e-08) < TOL
     row = swiss.positions([JD_2000], ["Sun", "Moon"], "tropical")[0]
     # legacy output verbatim, including its odd (360000-offset) speed
+    # 280.3727895 and the 360001 speed are known-wrong legacy values kept on purpose as a
+    # regression canary; the correct tropical Sun at J2000 is 280.36891967534336 (frame="tropical").
     assert abs(row["Sun"][0] - 280.37278951476947) < TOL
     assert abs(row["Sun"][1] - 360001.0193918759) < 1e-6
     assert abs(row["Moon"][0] - 223.32764527783561) < TOL

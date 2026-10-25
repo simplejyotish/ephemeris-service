@@ -32,6 +32,11 @@ with `{"detail": "<swisseph message>"}`.
 planet returns `longitude`, `speed` and `latitude`. In the equatorial frame `longitude` is right
 ascension and `latitude` is declination. `ayanamsha` is ignored outside the sidereal frame.
 
+Note: `ayanamsha="tropical"` (sidereal frame) reproduces the legacy app's user-defined zero
+ayanamsha exactly, quirks included: its `speed` carries a 360000 deg/day offset (about 360001
+for the Sun) and its longitude is about 0.0039 deg off true tropical at J2000. For genuine
+tropical longitudes and speeds use `frame="tropical"`.
+
 | Env | Meaning |
 | --- | --- |
 | `EPHEMERIS_API_KEY` | Shared secret. Required (startup fails otherwise) unless `ENV` is explicitly `dev`, `development` or `test`; only then may it be unset, which skips auth. |

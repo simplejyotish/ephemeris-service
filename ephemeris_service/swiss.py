@@ -23,7 +23,11 @@ _SID_MODES = {
     "pushya": swe.SIDM_TRUE_PUSHYA, "raman": swe.SIDM_RAMAN,
     "fagan": swe.SIDM_FAGAN_BRADLEY,
 }
-# "tropical" is a user-defined ayanamsha of exactly 0 pinned at the JD being computed.
+# "tropical" is a user-defined ayanamsha of exactly 0 pinned at the JD being computed
+# (SIDM_USER, t0=jd, ayan_t0=0). This reproduces the legacy app exactly, quirks included:
+# in sidereal mode the returned speed carries a 360000 deg/day offset (about 360001 for
+# the Sun) and the longitude is about 0.0039 deg off true tropical at J2000 (no nutation).
+# For genuine tropical longitudes and speeds use frame="tropical", not this ayanamsha.
 _TROPICAL = "tropical"
 
 _BASE_FLAGS = swe.FLG_MOSEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED
