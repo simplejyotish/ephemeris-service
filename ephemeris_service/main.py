@@ -63,6 +63,14 @@ class RiseSetIn(BaseModel):
     hindu_rising: bool = False
 
 
+class HousesBatchIn(BaseModel):
+    items: list[HousesIn] = Field(max_length=MAX_JDS)
+
+
+class RiseSetBatchIn(BaseModel):
+    items: list[RiseSetIn] = Field(max_length=MAX_JDS)
+
+
 class EclipseIn(BaseModel):
     jd_start: float
     kind: Literal["solar", "lunar"]
@@ -158,6 +166,22 @@ def create_app() -> FastAPI:
     def rise_set(body: RiseSetIn) -> dict:
         return {"jd": swiss.rise_set(
             body.jd_start, body.lat, body.lon, body.event, body.body, body.hindu_rising)}
+
+    # Batch forms of /v1/houses and /v1/rise-set: item i of the answer is exactly what the single endpoint returns
+    # for item i. The items are computed in order and the first Swiss Ephemeris error fails the whole batch with
+    # that error's own message (HTTP 422, the same text the single endpoint gives for that item).
+    @app.post("/v1/houses-batch", dependencies=auth)
+    def houses_batch(body: HousesBatchIn) -> dict:
+        out = []
+        for it in body.items:
+            cusps, asc, mc = swiss.houses(it.jd, it.lat, it.lon, it.ayanamsha, it.system)
+            out.append({"cusps": cusps, "ascendant": asc, "midheaven": mc})
+        return {"results": out}
+
+    @app.post("/v1/rise-set-batch", dependencies=auth)
+    def rise_set_batch(body: RiseSetBatchIn) -> dict:
+        return {"results": [swiss.rise_set(it.jd_start, it.lat, it.lon, it.event, it.body, it.hindu_rising)
+                            for it in body.items]}
 
     @app.post("/v1/eclipses", dependencies=auth)
     def eclipses(body: EclipseIn) -> dict:

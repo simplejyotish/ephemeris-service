@@ -242,3 +242,87 @@ def test_houses_omitted_system_equals_placidus(client):
     a = client.post("/v1/houses", headers=H, json=base)
     b = client.post("/v1/houses", headers=H, json={**base, "system": "placidus"})
     assert a.status_code == b.status_code == 200 and a.json() == b.json()
+
+
+# ----- batch forms of /v1/rise-set and /v1/houses -----
+# Reference values: what the single endpoints return for the same items (swisseph 2.10.03, Moshier).
+RISE_ITEMS = [
+    ({"jd_start": 2461114.5, "lat": 28.6139, "lon": 77.2090, "event": "sunrise"}, 2461114.542344129),
+    ({"jd_start": 2461114.5, "lat": 28.6139, "lon": 77.2090, "event": "sunset"}, 2461115.0414230614),
+    ({"jd_start": 2461114.5, "lat": 28.6139, "lon": 77.2090, "event": "sunrise", "hindu_rising": True},
+     2461114.5451218807),
+    ({"jd_start": 2461114.5, "lat": 28.6139, "lon": 77.2090, "event": "sunrise", "body": "Moon"}, 2461115.4703247305),
+    ({"jd_start": 2460000.5, "lat": 49.8951, "lon": -97.1384, "event": "sunset", "body": "Moon",
+      "hindu_rising": True}, 2460000.7526469436),
+]
+# (item, first cusp, tenth cusp, ascendant, midheaven)
+HOUSE_ITEMS = [
+    ({"jd": 2460000.5, "lat": 28.6, "lon": 77.2, "ayanamsha": "lahiri"},
+     285.00963202096386, 209.9926857816162, 285.00963202096386, 209.9926857816162),
+    ({"jd": 2447753.5, "lat": 49.8951, "lon": -97.1384, "ayanamsha": "krishnamurti", "system": "koch"},
+     261.7665811693744, 205.0827832505815, 261.7665811693744, 205.0827832505815),
+    ({"jd": 2451545.0, "lat": 28.6139, "lon": 77.2090, "ayanamsha": "tropical", "system": "equal"},
+     100.19518284750137, 10.195182847501403, 100.19518284750137, 357.46032521351685),
+]
+
+
+def test_rise_set_batch_equals_single_calls(client):
+    items = [it for it, _ in RISE_ITEMS]
+    r = client.post("/v1/rise-set-batch", headers=H, json={"items": items})
+    assert r.status_code == 200
+    got = r.json()["results"]
+    assert len(got) == len(RISE_ITEMS)
+    for value, (item, want) in zip(got, RISE_ITEMS):
+        assert abs(value - want) < 1e-12
+        single = client.post("/v1/rise-set", headers=H, json=item).json()["jd"]
+        assert value == single
+
+
+def test_houses_batch_equals_single_calls(client):
+    items = [it[0] for it in HOUSE_ITEMS]
+    r = client.post("/v1/houses-batch", headers=H, json={"items": items})
+    assert r.status_code == 200
+    got = r.json()["results"]
+    assert len(got) == len(HOUSE_ITEMS)
+    for row, (item, c1, c10, asc, mc) in zip(got, HOUSE_ITEMS):
+        assert set(row) == {"cusps", "ascendant", "midheaven"} and len(row["cusps"]) == 12
+        for a, b in ((row["cusps"][0], c1), (row["cusps"][9], c10), (row["ascendant"], asc), (row["midheaven"], mc)):
+            assert abs(a - b) < 1e-12
+        assert row == client.post("/v1/houses", headers=H, json=item).json()
+
+
+def test_batches_empty_and_auth(client):
+    for path in ("/v1/rise-set-batch", "/v1/houses-batch"):
+        assert client.post(path, headers=H, json={"items": []}).json() == {"results": []}
+        assert client.post(path, json={"items": []}).status_code == 401
+
+
+def test_batches_over_2000_422(client):
+    rise = {"jd_start": JD, "lat": 28.6, "lon": 77.2, "event": "sunrise"}
+    house = {"jd": JD, "lat": 28.6, "lon": 77.2, "ayanamsha": "lahiri"}
+    assert client.post("/v1/rise-set-batch", headers=H, json={"items": [rise] * 2001}).status_code == 422
+    assert client.post("/v1/houses-batch", headers=H, json={"items": [house] * 2001}).status_code == 422
+    assert client.post("/v1/houses-batch", headers=H, json={"items": [house] * 2000}).status_code == 200
+
+
+def test_batch_swe_error_is_the_single_call_message(client):
+    good = {"jd_start": JD, "lat": 28.6, "lon": 77.2, "event": "sunrise"}
+    bad = {"jd_start": 1.5, "lat": 28.6, "lon": 77.2, "event": "sunrise"}
+    single = client.post("/v1/rise-set", headers=H, json=bad)
+    r = client.post("/v1/rise-set-batch", headers=H, json={"items": [good, bad, good]})
+    assert r.status_code == single.status_code == 422
+    assert r.json() == single.json() and r.json()["detail"].startswith("swisseph.")
+    polar = {"jd": 2447753.5, "lat": 80, "lon": 77.2, "ayanamsha": "lahiri", "system": "koch"}
+    ok = {"jd": JD, "lat": 28.6, "lon": 77.2, "ayanamsha": "lahiri"}
+    single = client.post("/v1/houses", headers=H, json=polar)
+    r = client.post("/v1/houses-batch", headers=H, json={"items": [ok, polar]})
+    assert r.status_code == single.status_code == 422 and r.json() == single.json()
+
+
+def test_batch_item_validation_422(client):
+    r = client.post("/v1/rise-set-batch", headers=H, json={"items": [
+        {"jd_start": JD, "lat": 28.6, "lon": 77.2, "event": "noon"}]})
+    assert r.status_code == 422
+    r = client.post("/v1/houses-batch", headers=H, json={"items": [
+        {"jd": JD, "lat": 28.6, "lon": 77.2, "ayanamsha": "lahiri", "system": "whole_sign"}]})
+    assert r.status_code == 422
