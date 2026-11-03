@@ -1,6 +1,7 @@
 # ephemeris-service: raw astronomy over HTTP (AGPL-3.0, public)
 
 Read this first. This repo is **public**. Everything committed here is visible to anyone.
+Guardrails: use the `code-placement` skill (`.claude/skills/code-placement/SKILL.md`) and ask the developer when placement is ambiguous; hooks and limits are in `docs/guardrails.md`.
 
 ## What this repo is
 A small, stateless HTTP service on Swiss Ephemeris (`pyswisseph`). It returns raw astronomy only:
