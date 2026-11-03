@@ -1,0 +1,9 @@
+# Owner review is required (once the ruleset enables code-owner review) for guardrails,
+# licence files, the dependency pin and CI.
+/.claude/                 @randeep01
+/AGENTS.md                @randeep01
+/CLAUDE.md                @randeep01
+/.github/                 @randeep01
+/LICENSE                  @randeep01
+/LICENSES.md              @randeep01
+/pyproject.toml           @randeep01
