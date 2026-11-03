@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ephemeris-service"
-version = "0.1.0"
+version = "0.2.0"
 description = "Thin HTTP wrapper over the Swiss Ephemeris: positions, houses, rise/set, eclipses."
 readme = "README.md"
 requires-python = ">=3.11"
