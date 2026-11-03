@@ -42,3 +42,10 @@ def test_docs_list_every_rule_and_the_limits():
         assert f"| {rule} |" in text, rule
     assert "Limits" in text and "ruleset" in text and "CODEOWNERS" in text
 
+
+
+def test_ci_runs_the_guardrail_tests_without_the_service():
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    job = ci.split("  guardrails:", 1)[1].split("\n  test:", 1)[0]
+    assert "pytest tests/guardrails" in job and "--confcutdir=tests/guardrails" in job
+    assert "ephemeris-service" not in job
