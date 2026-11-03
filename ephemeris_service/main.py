@@ -17,18 +17,20 @@ from ephemeris_service import swiss
 try:
     SERVICE_VERSION = _pkg_version("ephemeris-service")
 except PackageNotFoundError:  # pragma: no cover
-    SERVICE_VERSION = "0.1.0"
+    SERVICE_VERSION = "0.2.0"
 
 DEFAULT_SOURCE_URL = "https://example.invalid/set-SOURCE_URL"
 MAX_JDS = 2000
 
-Ayanamsha = Literal["krishnamurti", "lahiri"]
+Ayanamsha = Literal["krishnamurti", "lahiri", "pushya", "raman", "fagan", "tropical"]
+Frame = Literal["sidereal", "tropical", "equatorial"]
 
 
 class PositionsIn(BaseModel):
     jds: list[float] = Field(max_length=MAX_JDS)
     planets: list[str]
     ayanamsha: Ayanamsha
+    frame: Frame = "sidereal"
 
     @field_validator("planets")
     @classmethod
@@ -49,6 +51,7 @@ class HousesIn(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
     ayanamsha: Ayanamsha
+    system: Literal["placidus", "koch", "sripati", "equal"] = "placidus"
 
 
 class RiseSetIn(BaseModel):
@@ -56,6 +59,16 @@ class RiseSetIn(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
     event: Literal["sunrise", "sunset"]
+    body: Literal["Sun", "Moon"] = "Sun"
+    hindu_rising: bool = False
+
+
+class HousesBatchIn(BaseModel):
+    items: list[HousesIn] = Field(max_length=MAX_JDS)
+
+
+class RiseSetBatchIn(BaseModel):
+    items: list[RiseSetIn] = Field(max_length=MAX_JDS)
 
 
 class EclipseIn(BaseModel):
@@ -134,9 +147,10 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/positions", dependencies=auth)
     def positions(body: PositionsIn) -> dict:
-        rows = swiss.positions(body.jds, body.planets, body.ayanamsha)
+        rows = swiss.positions_ex(body.jds, body.planets, body.ayanamsha, body.frame)
         return {"results": [
-            {name: {"longitude": lon, "speed": spd} for name, (lon, spd) in row.items()}
+            {name: {"longitude": p.longitude, "speed": p.speed, "latitude": p.latitude}
+             for name, p in row.items()}
             for row in rows]}
 
     @app.post("/v1/ayanamsha", dependencies=auth)
@@ -145,12 +159,29 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/houses", dependencies=auth)
     def houses(body: HousesIn) -> dict:
-        cusps, asc, mc = swiss.houses(body.jd, body.lat, body.lon, body.ayanamsha)
+        cusps, asc, mc = swiss.houses(body.jd, body.lat, body.lon, body.ayanamsha, body.system)
         return {"cusps": cusps, "ascendant": asc, "midheaven": mc}
 
     @app.post("/v1/rise-set", dependencies=auth)
     def rise_set(body: RiseSetIn) -> dict:
-        return {"jd": swiss.rise_set(body.jd_start, body.lat, body.lon, body.event)}
+        return {"jd": swiss.rise_set(
+            body.jd_start, body.lat, body.lon, body.event, body.body, body.hindu_rising)}
+
+    # Batch forms of /v1/houses and /v1/rise-set: item i of the answer is exactly what the single endpoint returns
+    # for item i. The items are computed in order and the first Swiss Ephemeris error fails the whole batch with
+    # that error's own message (HTTP 422, the same text the single endpoint gives for that item).
+    @app.post("/v1/houses-batch", dependencies=auth)
+    def houses_batch(body: HousesBatchIn) -> dict:
+        out = []
+        for it in body.items:
+            cusps, asc, mc = swiss.houses(it.jd, it.lat, it.lon, it.ayanamsha, it.system)
+            out.append({"cusps": cusps, "ascendant": asc, "midheaven": mc})
+        return {"results": out}
+
+    @app.post("/v1/rise-set-batch", dependencies=auth)
+    def rise_set_batch(body: RiseSetBatchIn) -> dict:
+        return {"results": [swiss.rise_set(it.jd_start, it.lat, it.lon, it.event, it.body, it.hindu_rising)
+                            for it in body.items]}
 
     @app.post("/v1/eclipses", dependencies=auth)
     def eclipses(body: EclipseIn) -> dict:
